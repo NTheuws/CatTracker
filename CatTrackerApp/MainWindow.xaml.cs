@@ -23,16 +23,19 @@ namespace DistRS
 {
     public partial class MainWindow : Window
     {
-        int count = 0;
         private Pipeline pipe;
         private Colorizer colorizer;
         private CancellationTokenSource tokenSource = new CancellationTokenSource();
 
         int height = 240;
         int width = 320;
-        float[] distArray = new float[((240 / 10) * (320 / 10))];
-        float[] callibrationArray = new float[((240 / 10) * (320 / 10))];
+        float[] distArray = new float[((320 / 10) * (240 / 10))];
+        float[] callibrationArray = new float[((320 / 10) * (240 / 10))];
 
+        private SerialCommunication com;
+        int currentCorner = 0;
+        int pixelCount = 0;
+        bool playing = false;
 
         static Action<VideoFrame> UpdateImage(System.Windows.Controls.Image img)
         {
@@ -82,7 +85,7 @@ namespace DistRS
                                         .Select(p => p.As<VideoStreamProfile>()).First();
 
                     var cfg = new Config();
-                    cfg.EnableStream(Stream.Depth, depthProfile.Width, depthProfile.Height, depthProfile.Format, depthProfile.Framerate);
+                    cfg.EnableStream(Stream.Depth, 320, 240, depthProfile.Format, depthProfile.Framerate);
                     cfg.EnableStream(Stream.Color, colorProfile.Width, colorProfile.Height, colorProfile.Format, colorProfile.Framerate);
 
 
@@ -96,8 +99,6 @@ namespace DistRS
                     {
                         using (var frames = pipe.WaitForFrames())
                         {
-                            count++;
-                            Console.WriteLine(count);
                             var colorFrame = frames.ColorFrame.DisposeWith(frames);
                             var depthFrame = frames.DepthFrame.DisposeWith(frames);
 
@@ -177,19 +178,26 @@ namespace DistRS
             }
             return num;
         }
-
+        //
+        //
+        //
+        //
         private void CheckPixels(float[] array)
         {
             int num = -1;
             using (var frames = pipe.WaitForFrames())
             using (var depth = frames.DepthFrame)
             {
-                for (int i = 0; i < width / 10; i++)
+                for (int i = 0; i < width; i++) // Check Width 1020/10 pixels.
                 {
-                    for (int j = 0; j < height / 10; j++)
+                    for (int j = 0; j < height; j++) // Check Height 760/10 pixels.
                     {
-                        num++;
-                        array[num] = depth.GetDistance(i*10, j*10);
+                        if (i % 10 == 0 && j % 10 == 0)
+                        {
+                            num++;
+                            array[num] = depth.GetDistance(i, j);
+                        }
+                        
                     }
                 }
                 depth.Dispose();
@@ -199,15 +207,108 @@ namespace DistRS
 
         private void ComparePixels()
         {
-            int count = 0;
+
+            // 768 pixels 32x24.
+            // Y-axis first followed by the X-axis.
+            pixelCount = 0;
+            int x = 0;
+            int y = -1;
+
             for (int i = 0; i < callibrationArray.Length; i++)
             {
-                if (distArray[i] + 0.05 < callibrationArray[i] )
+                // Sort the squares.
+                // 1: top left 2: bottom left 3: top right 4: bottom right/=.
+
+                // Counting the position.
+                y++;
+                if ((i + 1) % 24 == 0)
                 {
-                    count++;
+                    y = 0;
+                    x++;
+                }
+
+
+                if (currentCorner == 1) // Top left.
+                {
+                    if (x <= 15 && y <= 11)
+                    {
+                        if (distArray[i] + 0.1 < callibrationArray[i])
+                        {
+                            pixelCount++;
+                        }
+                    }
+                }
+                else if (currentCorner == 2) // Bottom left.
+                {
+                    if (x <= 15 && y >= 12)
+                    {
+                        if (distArray[i] + 0.1 < callibrationArray[i])
+                        {
+                            pixelCount++;
+                        }
+                    }
+                }
+                else if (currentCorner == 3) // Top right.
+                {
+                    if (x >= 16 && y <= 11)
+                    {
+                        if (distArray[i] + 0.1 < callibrationArray[i])
+                        {
+                            pixelCount++;
+                        }
+                    }
+                }
+                else if (currentCorner == 4) // Bottom right.
+                {
+                    if (x >= 16 && y >= 12)
+                    {
+                        if (distArray[i] + 0.1 < callibrationArray[i])
+                        {
+                            pixelCount++;
+                        }
+                    }
                 }
             }
-            tbDotCount.Text = count.ToString() + " / " + callibrationArray.Length;
+            tbDotCount.Text = pixelCount.ToString() + " / " + callibrationArray.Length + " (" + currentCorner + ")";
+            Console.WriteLine(pixelCount.ToString() + " / " + callibrationArray.Length + " (" + currentCorner + ")");
+        }
+
+        // Connect to the arduino and start playing.
+        private void ButtonConnect_Click(object sender, RoutedEventArgs e)
+        {
+            com = new SerialCommunication();
+            currentCorner = 1;
+            SquareHitSendMessage(currentCorner);
+
+            playing = true;
+            while (playing)
+            {
+                CheckPixels(distArray);
+                ComparePixels();
+                if (pixelCount > 25)
+                {
+                    nextSquare();
+                }
+            }
+        }
+
+        private void nextSquare()
+        {
+            Random ran = new Random();
+            int num = currentCorner + ran.Next(1,4);
+            if (num > 4 && num != 4)
+            {
+                num %= 4;
+            }
+            currentCorner = num;
+            SquareHitSendMessage(num);
+        }
+
+        private void SquareHitSendMessage(int val)
+        {
+            com.Connect();
+            com.SendMessage("#" + val + "%");
+            com.Disconnect();
         }
     }
 }
