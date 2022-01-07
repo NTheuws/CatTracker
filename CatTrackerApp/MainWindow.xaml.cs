@@ -18,6 +18,7 @@ using System.Windows.Shapes;
 using Intel.RealSense;
 using Stream = Intel.RealSense.Stream;
 using System.Windows.Threading;
+using System.Diagnostics;
 
 namespace DistRS
 {
@@ -157,7 +158,15 @@ namespace DistRS
         private void ButtonCallibrate_Click(object sender, RoutedEventArgs e)
         {
             tbDotCount.Text = "0";
-            CheckPixels(callibrationArray);
+            bool isObstructed = CheckPixels(callibrationArray);
+            if (isObstructed)
+            {
+                MessageBox.Show("There's something in the way, either a cat or the sensor isnt placed correctly! Please try again after moving it!");
+            }
+            else
+            {
+                MessageBox.Show("Callibration succesfull!");
+            }
         }
         // Compare current to callibration
         private void ButtonCompare_Click(object sender, RoutedEventArgs e)
@@ -178,13 +187,12 @@ namespace DistRS
             }
             return num;
         }
-        //
-        //
-        //
-        //
-        private void CheckPixels(float[] array)
+
+        private bool CheckPixels(float[] array)
         {
+            bool heightDif = false;
             int num = -1;
+
             using (var frames = pipe.WaitForFrames())
             using (var depth = frames.DepthFrame)
             {
@@ -203,6 +211,48 @@ namespace DistRS
                 depth.Dispose();
                 frames.Dispose();
             }
+            // Check if there's something in front of the camera.
+            // By comparing the closest dots in distance, the difference can't be too much.
+            if (array == callibrationArray)
+            {
+                int counter = 0;
+                float lastVal = callibrationArray[0];
+                float lastTopVal = callibrationArray[0];
+
+                foreach (float dist in array)
+                {
+                    counter++;
+                    if (counter % 24 == 1)
+                    {
+                        // Difference over 10cm.
+                        if (dist < lastTopVal && lastTopVal - dist >= 0.1)
+                        {
+                            heightDif = true;
+                        }
+                        else if (dist > lastTopVal && dist - lastTopVal >= 0.1)
+                        {
+                            heightDif = true;
+                        }
+
+                        lastTopVal = dist;
+                    }
+                    // Compare to last
+                    else
+                    {
+                        // Difference over 10cm.
+                        if (dist < lastVal && lastVal - dist >= 0.1)
+                        {
+                            heightDif = true;
+                        }
+                        else if (dist > lastVal && dist - lastVal >= 0.1)
+                        {
+                            heightDif = true;
+                        }
+                    }
+                    lastVal = dist;
+                }
+            }
+            return heightDif;
         }
 
         private void ComparePixels()
@@ -270,7 +320,7 @@ namespace DistRS
                 }
             }
             tbDotCount.Text = pixelCount.ToString() + " / " + callibrationArray.Length + " (" + currentCorner + ")";
-            Console.WriteLine(pixelCount.ToString() + " / " + callibrationArray.Length + " (" + currentCorner + ")");
+            //Console.WriteLine(pixelCount.ToString() + " / " + callibrationArray.Length + " (" + currentCorner + ")");
         }
 
         // Connect to the arduino and start playing.
