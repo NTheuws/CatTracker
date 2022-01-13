@@ -257,7 +257,6 @@ namespace DistRS
 
         private void ComparePixels()
         {
-
             // 768 pixels 32x24.
             // Y-axis first followed by the X-axis.
             pixelCount = 0;
@@ -266,9 +265,7 @@ namespace DistRS
 
             for (int i = 0; i < callibrationArray.Length; i++)
             {
-                // Sort the squares.
-                // 1: top left 2: bottom left 3: top right 4: bottom right/=.
-
+                // Sort the squares. 3x3 grid.
                 // Counting the position.
                 y++;
                 if ((i + 1) % 24 == 0)
@@ -277,51 +274,97 @@ namespace DistRS
                     x++;
                 }
 
+                switch (currentCorner)
+                {
+                    case 1: // Top left.
 
-                if (currentCorner == 1) // Top left.
-                {
-                    if (x <= 15 && y <= 11)
-                    {
-                        if (distArray[i] + 0.1 < callibrationArray[i])
+                        if (x < 10 && y < 8)
                         {
-                            pixelCount++;
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
                         }
-                    }
-                }
-                else if (currentCorner == 2) // Bottom left.
-                {
-                    if (x <= 15 && y >= 12)
-                    {
-                        if (distArray[i] + 0.1 < callibrationArray[i])
+                        break;
+                    case 2: // Top Middle.
+
+                        if (x > 9 && x < 22 && y < 8)
                         {
-                            pixelCount++;
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
                         }
-                    }
-                }
-                else if (currentCorner == 3) // Top right.
-                {
-                    if (x >= 16 && y <= 11)
-                    {
-                        if (distArray[i] + 0.1 < callibrationArray[i])
+                        break;
+                    case 3: // Top right.
+                        if (x > 21 && y < 8)
                         {
-                            pixelCount++;
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
                         }
-                    }
-                }
-                else if (currentCorner == 4) // Bottom right.
-                {
-                    if (x >= 16 && y >= 12)
-                    {
-                        if (distArray[i] + 0.1 < callibrationArray[i])
+                        break;
+                    case 4:// Middle Left.
+                        if (x < 10 && y > 7 && y < 16)
                         {
-                            pixelCount++;
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
                         }
-                    }
+                        break;
+                    case 5: // Middle Middle.
+                        if (x > 9 && x < 22 && y > 7 && y < 16)
+                        {
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
+                        }
+                        break;
+                    case 6: // Middle Right.
+                        if (x > 21 && y > 7 && y < 16)
+                        {
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
+                        }
+                        break;
+                    case 7: // Bottom Left.
+                        if (x < 10 && y > 15)
+                        {
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
+                        }
+                        break;
+                    case 8: // Bottom Middle.
+                        if (x > 9 && x < 22 && y > 15)
+                        {
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
+                        }
+                        break;
+                    case 9:  // Bottom right.
+                        if (x > 21 && y > 15)
+                        {
+                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            {
+                                pixelCount++;
+                            }
+                        }
+                        break;
                 }
             }
+
             tbDotCount.Text = pixelCount.ToString() + " / " + callibrationArray.Length + " (" + currentCorner + ")";
-            //Console.WriteLine(pixelCount.ToString() + " / " + callibrationArray.Length + " (" + currentCorner + ")");
         }
+
 
         // Connect to the arduino and start playing.
         private void ButtonConnect_Click(object sender, RoutedEventArgs e)
@@ -335,7 +378,7 @@ namespace DistRS
             {
                 CheckPixels(distArray);
                 ComparePixels();
-                if (pixelCount > 25)
+                if (pixelCount > 20) // Max if all pixels count = 80.
                 {
                     nextSquare();
                 }
@@ -345,10 +388,10 @@ namespace DistRS
         private void nextSquare()
         {
             Random ran = new Random();
-            int num = currentCorner + ran.Next(1,4);
-            if (num > 4 && num != 4)
+            int num = currentCorner + ran.Next(1,9);
+            if (num > 9)
             {
-                num %= 4;
+                num %= 9;
             }
             currentCorner = num;
             SquareHitSendMessage(num);
