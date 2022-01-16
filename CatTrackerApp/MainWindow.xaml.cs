@@ -196,9 +196,9 @@ namespace DistRS
             using (var frames = pipe.WaitForFrames())
             using (var depth = frames.DepthFrame)
             {
-                for (int i = 0; i < width; i++) // Check Width 1020/10 pixels.
+                for (int i = 0; i < width; i++) // Check Width 320/10 pixels.
                 {
-                    for (int j = 0; j < height; j++) // Check Height 760/10 pixels.
+                    for (int j = 0; j < height; j++) // Check Height 240/10 pixels.
                     {
                         if (i % 10 == 0 && j % 10 == 0)
                         {
@@ -215,36 +215,37 @@ namespace DistRS
             // By comparing the closest dots in distance, the difference can't be too much.
             if (array == callibrationArray)
             {
-                int counter = 0;
+                int counter = 0; // Counts the amount of pixels, every 24th pixel is the top pixel in the column.
                 float lastVal = callibrationArray[0];
                 float lastTopVal = callibrationArray[0];
+                float minimalDist = 0.1f; // Difference of 10cm
 
                 foreach (float dist in array)
                 {
                     counter++;
-                    if (counter % 24 == 1)
+                    if (counter % 24 == 1) // Every 24th pixel will start at the top again.
                     {
                         // Difference over 10cm.
-                        if (dist < lastTopVal && lastTopVal - dist >= 0.1)
+                        if (dist < lastTopVal && lastTopVal - dist >= minimalDist)
                         {
                             heightDif = true;
                         }
-                        else if (dist > lastTopVal && dist - lastTopVal >= 0.1)
+                        else if (dist > lastTopVal && dist - lastTopVal >= minimalDist)
                         {
                             heightDif = true;
                         }
 
-                        lastTopVal = dist;
+                        lastTopVal = dist; // Remember the last top value to be able to compare it to the next one.
                     }
-                    // Compare to last
-                    else
+                    // Compare to last the pixel above it.
+                    else 
                     {
                         // Difference over 10cm.
-                        if (dist < lastVal && lastVal - dist >= 0.1)
+                        if (dist < lastVal && lastVal - dist >= minimalDist)
                         {
                             heightDif = true;
                         }
-                        else if (dist > lastVal && dist - lastVal >= 0.1)
+                        else if (dist > lastVal && dist - lastVal >= minimalDist)
                         {
                             heightDif = true;
                         }
@@ -258,10 +259,21 @@ namespace DistRS
         private void ComparePixels()
         {
             // 768 pixels 32x24.
-            // Y-axis first followed by the X-axis.
-            pixelCount = 0;
-            int x = 0;
-            int y = -1;
+            // Y-axis first followed by the X-axis. Top left to bottom left then moving one to the right.
+            pixelCount = 0; // Count of the amount of pixels that are closer than in the callibration.
+            int x = 0; // Keep track of the x coordinate of the current pixel.
+            int y = -1;  // Keep track of the y coordinate of the current pixel.
+
+            // The screen is divided into a 3x3 grid, this grid has two lines on each axis. The lines are on the next pixel:
+            // X-axis lines.
+            int leftX = 9;
+            int rightX = 22;
+            // Y-axis lines.
+            int upperY = 7;
+            int lowerY = 16;
+
+            // Minimal distance to be counted as a cat.
+            float minimalDist = 0.1f;
 
             for (int i = 0; i < callibrationArray.Length; i++)
             {
@@ -278,9 +290,9 @@ namespace DistRS
                 {
                     case 1: // Top left.
 
-                        if (x < 10 && y < 8)
+                        if (x <= leftX && y <= upperY)
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
@@ -288,72 +300,72 @@ namespace DistRS
                         break;
                     case 2: // Top Middle.
 
-                        if (x > 9 && x < 22 && y < 8)
+                        if (x > leftX && x < rightX && y <= upperY )
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
                         }
                         break;
                     case 3: // Top right.
-                        if (x > 21 && y < 8)
+                        if (x >= rightX && y <= upperY)
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
                         }
                         break;
                     case 4:// Middle Left.
-                        if (x < 10 && y > 7 && y < 16)
+                        if (x <= rightX && y > upperY && y < lowerY)
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
                         }
                         break;
                     case 5: // Middle Middle.
-                        if (x > 9 && x < 22 && y > 7 && y < 16)
+                        if (x > leftX && x < rightX && y > upperY && y < lowerY)
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
                         }
                         break;
                     case 6: // Middle Right.
-                        if (x > 21 && y > 7 && y < 16)
+                        if (x >= rightX && y > upperY && y < lowerY)
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
                         }
                         break;
                     case 7: // Bottom Left.
-                        if (x < 10 && y > 15)
+                        if (x <= rightX && y >= lowerY)
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
                         }
                         break;
                     case 8: // Bottom Middle.
-                        if (x > 9 && x < 22 && y > 15)
+                        if (x > rightX && x < leftX && y >= lowerY)
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
                         }
                         break;
                     case 9:  // Bottom right.
-                        if (x > 21 && y > 15)
+                        if (x >= rightX && y >= lowerY)
                         {
-                            if (distArray[i] + 0.1 < callibrationArray[i])
+                            if (distArray[i] + minimalDist < callibrationArray[i])
                             {
                                 pixelCount++;
                             }
@@ -370,17 +382,27 @@ namespace DistRS
         private void ButtonConnect_Click(object sender, RoutedEventArgs e)
         {
             com = new SerialCommunication();
-            currentCorner = 1;
+            currentCorner = 1; // Start by going to the top left corner.
             SquareHitSendMessage(currentCorner);
+            int counter = 0; // Variable for the idle time.
 
             playing = true;
             while (playing)
             {
+                counter++; // Idle loop counter.
+
                 CheckPixels(distArray);
                 ComparePixels();
-                if (pixelCount > 20) // Max if all pixels count = 80.
+
+                if (pixelCount > 10) // Max if all pixels count = 80.
                 {
                     nextSquare();
+                    counter = 0; // Reset the counter.
+                }
+                else if(counter > 200) // If it takes too long, move the dot to catch their attention again.
+                {
+                    nextSquare();
+                    counter = 0; // Reset the counter
                 }
             }
         }
