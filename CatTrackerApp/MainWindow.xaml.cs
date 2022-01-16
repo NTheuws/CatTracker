@@ -161,7 +161,7 @@ namespace DistRS
             bool isObstructed = CheckPixels(callibrationArray);
             if (isObstructed)
             {
-                MessageBox.Show("There's something in the way, either a cat or the sensor isnt placed correctly! Please try again after moving it!");
+                MessageBox.Show("There's something in the way, either a cat some furniture! Connect anyway if it's furniture otherwise make sure the cat moves away for a bit and try again");
             }
             else
             {
